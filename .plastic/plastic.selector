@@ -1,0 +1,4 @@
+repository "AIJam@sefercinar18@cloud"
+  path "/"
+    br "/main"
+    co "/main"
