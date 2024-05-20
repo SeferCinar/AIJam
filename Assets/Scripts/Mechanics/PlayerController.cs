@@ -8,29 +8,19 @@ using Platformer.Core;
 
 namespace Platformer.Mechanics
 {
-    /// <summary>
-    /// This is the main class used to implement control of the player.
-    /// It is a superset of the AnimationController class, but is inlined to allow for any kind of customisation.
-    /// </summary>
     public class PlayerController : KinematicObject
     {
         public AudioClip jumpAudio;
         public AudioClip respawnAudio;
         public AudioClip ouchAudio;
 
-        /// <summary>
-        /// Max horizontal speed of the player.
-        /// </summary>
         public float maxSpeed = 7;
-        /// <summary>
-        /// Initial jump velocity at the start of a jump.
-        /// </summary>
         public float jumpTakeOffSpeed = 7;
 
         public JumpState jumpState = JumpState.Grounded;
         private bool stopJump;
-        /*internal new*/ public Collider2D collider2d;
-        /*internal new*/ public AudioSource audioSource;
+        public Collider2D collider2d;
+        public AudioSource audioSource;
         public Health health;
         public bool controlEnabled = true;
 
@@ -39,6 +29,9 @@ namespace Platformer.Mechanics
         SpriteRenderer spriteRenderer;
         internal Animator animator;
         readonly PlatformerModel model = Simulation.GetModel<PlatformerModel>();
+
+        private bool isClimbing = false; // Merdiven tırmanma durumu
+        private float climbSpeed = 5f; // Merdiven tırmanma hızı
 
         public Bounds Bounds => collider2d.bounds;
 
@@ -56,19 +49,33 @@ namespace Platformer.Mechanics
             if (controlEnabled)
             {
                 move.x = Input.GetAxis("Horizontal");
-                if (jumpState == JumpState.Grounded && Input.GetButtonDown("Jump"))
-                    jumpState = JumpState.PrepareToJump;
-                else if (Input.GetButtonUp("Jump"))
+
+                if (isClimbing)
                 {
-                    stopJump = true;
-                    Schedule<PlayerStopJump>().player = this;
+                    move.y = Input.GetAxis("Vertical") * climbSpeed; // W ve S tuşları ile tırmanma
+                    velocity.y = move.y; // Dikey hareketi doğrudan ayarla
+                }
+                else
+                {
+                    if (jumpState == JumpState.Grounded && Input.GetButtonDown("Jump"))
+                        jumpState = JumpState.PrepareToJump;
+                    else if (Input.GetButtonUp("Jump"))
+                    {
+                        stopJump = true;
+                        Schedule<PlayerStopJump>().player = this;
+                    }
                 }
             }
             else
             {
                 move.x = 0;
             }
-            UpdateJumpState();
+
+            if (!isClimbing)
+            {
+                UpdateJumpState();
+            }
+
             base.Update();
         }
 
@@ -104,29 +111,55 @@ namespace Platformer.Mechanics
 
         protected override void ComputeVelocity()
         {
-            if (jump && IsGrounded)
+            if (isClimbing)
             {
-                velocity.y = jumpTakeOffSpeed * model.jumpModifier;
-                jump = false;
+                targetVelocity = new Vector2(move.x * maxSpeed, move.y);
             }
-            else if (stopJump)
+            else
             {
-                stopJump = false;
-                if (velocity.y > 0)
+                if (jump && IsGrounded)
                 {
-                    velocity.y = velocity.y * model.jumpDeceleration;
+                    velocity.y = jumpTakeOffSpeed * model.jumpModifier;
+                    jump = false;
                 }
+                else if (stopJump)
+                {
+                    stopJump = false;
+                    if (velocity.y > 0)
+                    {
+                        velocity.y = velocity.y * model.jumpDeceleration;
+                    }
+                }
+
+                if (move.x > 0.01f)
+                    spriteRenderer.flipX = false;
+                else if (move.x < -0.01f)
+                    spriteRenderer.flipX = true;
+
+                animator.SetBool("grounded", IsGrounded);
+                animator.SetFloat("velocityX", Mathf.Abs(velocity.x) / maxSpeed);
+
+                targetVelocity = move * maxSpeed;
             }
+        }
 
-            if (move.x > 0.01f)
-                spriteRenderer.flipX = false;
-            else if (move.x < -0.01f)
-                spriteRenderer.flipX = true;
+        void OnTriggerEnter2D(Collider2D other)
+        {
+            if (other.CompareTag("Ladder"))
+            {
+                isClimbing = true;
+                velocity = Vector2.zero; // Mevcut hızı sıfırla
+                animator.SetBool("climbing", true);
+            }
+        }
 
-            animator.SetBool("grounded", IsGrounded);
-            animator.SetFloat("velocityX", Mathf.Abs(velocity.x) / maxSpeed);
-
-            targetVelocity = move * maxSpeed;
+        void OnTriggerExit2D(Collider2D other)
+        {
+            if (other.CompareTag("Ladder"))
+            {
+                isClimbing = false;
+                animator.SetBool("climbing", false);
+            }
         }
 
         public enum JumpState
