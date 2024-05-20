@@ -8,6 +8,7 @@ public class ButtonCameraSwitcher2 : MonoBehaviour
     public CinemachineVirtualCamera VCam1;
     public CinemachineVirtualCamera VCam2;
     public CinemachineVirtualCamera VCam3;
+    public CinemachineVirtualCamera VCam4;
 
     public Button button1;
     public Button button2;
@@ -34,13 +35,15 @@ public class ButtonCameraSwitcher2 : MonoBehaviour
 
         EventTrigger.Entry entryExit = new EventTrigger.Entry();
         entryExit.eventID = EventTriggerType.PointerExit;
-        entryExit.callback.AddListener((eventData) => { ResetOpacity(button); });
+        entryExit.callback.AddListener((eventData) => { 
+         ResetCameraPriorities(); 
+         ResetOpacity(button);
+         });
+         
 
         EventTrigger.Entry entryClick = new EventTrigger.Entry();
         entryClick.eventID = EventTriggerType.PointerClick;
-        entryClick.callback.AddListener((eventData) => {VCam1.Priority = 10;
-        VCam2.Priority =0;
-         VCam3.Priority =0;
+        entryClick.callback.AddListener((eventData) => {
          });
 
         trigger.triggers.Add(entryEnter);
@@ -49,10 +52,10 @@ public class ButtonCameraSwitcher2 : MonoBehaviour
     }
 
     private void SwitchCamera(int cameraIndex)
-    {
-        VCam1.Priority = (cameraIndex == 1) ? 10 : 0;
-        VCam2.Priority = (cameraIndex == 2) ? 10 : 0;
-        VCam3.Priority = (cameraIndex == 3) ? 10 : 0;
+    {   
+        VCam2.Priority = (cameraIndex == 1) ? 10 : 0;
+        VCam3.Priority = (cameraIndex == 2) ? 10 : 0;
+        VCam4.Priority = (cameraIndex == 3) ? 10 : 0;
     }
      private void SetOpacity(Button button, float opacity)
     {
@@ -73,5 +76,12 @@ public class ButtonCameraSwitcher2 : MonoBehaviour
         {
             image.color = originalColor;
         }
+    }
+    private void ResetCameraPriorities()
+    {
+        VCam1.Priority = 10;
+        VCam2.Priority = 0;
+        VCam3.Priority = 0;
+        VCam4.Priority = 0;
     }
 }
